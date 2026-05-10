@@ -1,0 +1,4 @@
+interface:
+  display_name: "Save and Summarize Anything"
+  short_description: "Save article URLs as Markdown and summarize"
+  default_prompt: "Use $save-and-summary-anything to save this article URL locally and summarize it."

@@ -29,7 +29,7 @@ description: "Save and summarize arbitrary article-like web pages from a URL. Us
 
 | 变量 | 说明 | 默认值 |
 |---|---|---|
-| `ANY_ARTICLE_OUTPUT` | 文章保存根目录 | `$OBSIDIAN_VAULT_PATH/网页文章`；若未设置 OBSIDIAN_VAULT_PATH，则使用 `/Users/lkc/Library/Mobile Documents/iCloud~md~obsidian/Documents/lkc/网页文章` |
+| `ANY_ARTICLE_OUTPUT` | 文章保存根目录 | 若设置 `ANY_ARTICLE_OUTPUT` 则使用它；否则使用 `$OBSIDIAN_VAULT_PATH/网页文章`；若两者都未设置，则使用 `~/saved-articles` |
 | `CHROME_PROFILE_MODE` | Chrome profile 模式：`dedicated` 使用 Hermes 专用 profile，可与日常 Chrome 并行；`default` 复用用户日常 Chrome profile/cookies，但通常要求先退出 Chrome | `dedicated` |
 | `CHROME_USER_DATA_DIR` | Chrome user data 根目录；dedicated 模式默认是 Hermes 专用目录，default 模式默认是系统 Chrome 目录 | `~/.hermes/chrome-profiles/save-and-summary`（dedicated）或 `~/Library/Application Support/Google/Chrome`（default） |
 | `CHROME_PROFILE_DIRECTORY` | Chrome profile 名称；dedicated 模式默认 `Default`，default 模式可用 `auto` 读取 Local State 的 last_used | `Default`（dedicated）或 `auto`（default） |
@@ -39,7 +39,9 @@ description: "Save and summarize arbitrary article-like web pages from a URL. Us
 推荐 Obsidian 用户设置：
 
 ```bash
-export ANY_ARTICLE_OUTPUT="/Users/lkc/Library/Mobile Documents/iCloud~md~obsidian/Documents/lkc/网页文章"
+export OBSIDIAN_VAULT_PATH="/path/to/your/obsidian-vault"
+# or:
+export ANY_ARTICLE_OUTPUT="/path/to/article-archive"
 ```
 
 ## 用法

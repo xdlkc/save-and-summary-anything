@@ -26,8 +26,21 @@ from typing import List, Optional, Tuple
 from playwright.sync_api import sync_playwright
 
 URL = sys.argv[1] if len(sys.argv) > 1 else None
-DEFAULT_OBSIDIAN_VAULT = "/Users/lkc/Library/Mobile Documents/iCloud~md~obsidian/Documents/lkc"
-DEFAULT_ARTICLE_OUTPUT = str(Path(os.environ.get("OBSIDIAN_VAULT_PATH", DEFAULT_OBSIDIAN_VAULT)) / "网页文章")
+# Output precedence:
+#   1. CLI argument: save_article.py <url> <output_dir>
+#   2. ANY_ARTICLE_OUTPUT
+#   3. OBSIDIAN_VAULT_PATH/网页文章
+#   4. ~/saved-articles
+#
+# Do not hardcode a personal vault path in the public skill. Users who want an
+# Obsidian/iCloud/Dropbox archive should set OBSIDIAN_VAULT_PATH or
+# ANY_ARTICLE_OUTPUT in their shell/Hermes environment.
+_obsidian_vault = os.environ.get("OBSIDIAN_VAULT_PATH", "").strip()
+DEFAULT_ARTICLE_OUTPUT = (
+    str(Path(_obsidian_vault).expanduser() / "网页文章")
+    if _obsidian_vault
+    else os.path.expanduser("~/saved-articles")
+)
 OUTPUT_DIR = sys.argv[2] if len(sys.argv) > 2 else os.environ.get(
     "ANY_ARTICLE_OUTPUT", DEFAULT_ARTICLE_OUTPUT
 )

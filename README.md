@@ -4,6 +4,8 @@ A Hermes Agent skill for saving article-like web pages as local Markdown, downlo
 
 This skill is designed for “drop me a URL” workflows: when a user sends an ordinary web article URL, Hermes can open it in a real Chrome session, extract the article body, save a Markdown archive with local media, and reply with a Chinese summary.
 
+The Python script is standalone and can be run outside Hermes. `SKILL.md` is the Hermes integration layer that tells Hermes when and how to use the script.
+
 ## What it does
 
 - Detects whether a URL is a text-heavy article page before saving.
@@ -79,7 +81,7 @@ NOT_ARTICLE=<reason>
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `ANY_ARTICLE_OUTPUT` | Article archive root | `$OBSIDIAN_VAULT_PATH/网页文章`, or `/Users/lkc/Library/Mobile Documents/iCloud~md~obsidian/Documents/lkc/网页文章` if `OBSIDIAN_VAULT_PATH` is unset |
+| `ANY_ARTICLE_OUTPUT` | Article archive root | `$OBSIDIAN_VAULT_PATH/网页文章` if set; otherwise `~/saved-articles` |
 | `CHROME_PROFILE_MODE` | `dedicated` uses an isolated Hermes Chrome profile; `default` reuses the normal Chrome profile/cookies | `dedicated` |
 | `CHROME_USER_DATA_DIR` | Chrome user-data directory | `~/.hermes/chrome-profiles/save-and-summary` in dedicated mode; `~/Library/Application Support/Google/Chrome` in default mode |
 | `CHROME_PROFILE_DIRECTORY` | Chrome profile directory | `Default` in dedicated mode; `auto` in default mode |

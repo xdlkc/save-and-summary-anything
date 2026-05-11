@@ -99,6 +99,13 @@ def abs_url(src: str, base: str) -> str:
 
 
 def guess_ext(url: str, content_type: str = "") -> str:
+    # WeChat image URLs often encode the true format in the query string, e.g.
+    # ...?wx_fmt=png, while the path itself has no extension. Prefer that when
+    # present so local files keep the correct type.
+    q = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
+    wx_fmt = (q.get("wx_fmt") or [""])[0].lower()
+    if wx_fmt in ("jpg", "jpeg", "png", "gif", "webp"):
+        return ".jpg" if wx_fmt == "jpeg" else f".{wx_fmt}"
     ct = (content_type or "").lower()
     if "png" in ct:
         return ".png"
@@ -148,6 +155,20 @@ def chrome_is_running() -> bool:
         return r.returncode == 0 and bool(r.stdout.strip())
     except Exception:
         return False
+
+
+def is_wechat_url(url: str) -> bool:
+    try:
+        return urllib.parse.urlparse(url).hostname == "mp.weixin.qq.com"
+    except Exception:
+        return False
+
+
+WECHAT_STEALTH_JS = """
+Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
+window.chrome = window.chrome || { runtime: {} };
+"""
 
 
 def detect_profile_directory(user_data_dir: Path, requested: str) -> str:
@@ -257,7 +278,11 @@ EXTRACT_JS = r"""
     if (el.tagName === 'ARTICLE' || el.tagName === 'MAIN') s += 800;
     return s;
   }
-  const preferred = Array.from(document.querySelectorAll('article, main, [role="main"], .article, .post, .entry-content, .post-content, .article-content, .content, #content, .markdown-body, .prose'));
+  const isWechat = location.hostname === 'mp.weixin.qq.com';
+  const preferredSelector = isWechat
+    ? '#js_content, article, main, [role="main"], .article, .post, .entry-content, .post-content, .article-content, .content, #content, .markdown-body, .prose'
+    : 'article, main, [role="main"], .article, .post, .entry-content, .post-content, .article-content, .content, #content, .markdown-body, .prose';
+  const preferred = Array.from(document.querySelectorAll(preferredSelector));
   const broad = Array.from(document.body.querySelectorAll('article, main, section, div'));
   let candidates = [...new Set([...preferred, ...broad])].filter(visible);
   candidates.sort((a,b) => score(b) - score(a));
@@ -267,10 +292,10 @@ EXTRACT_JS = r"""
     const n = document.querySelector(sel);
     return n ? ((attr === 'text') ? textOf(n) : (n.getAttribute(attr) || '')) : '';
   };
-  const title = meta('meta[property="og:title"]') || meta('meta[name="twitter:title"]') || textOf(document.querySelector('h1')) || document.title || '';
-  const site = meta('meta[property="og:site_name"]') || location.hostname;
-  const author = meta('meta[name="author"]') || meta('meta[property="article:author"]') || meta('[rel="author"]', 'text') || '';
-  const date = meta('meta[property="article:published_time"]') || meta('meta[name="date"]') || meta('time[datetime]', 'datetime') || meta('time', 'text') || '';
+  const title = meta('meta[property="og:title"]') || meta('meta[name="twitter:title"]') || textOf(document.querySelector('#activity-name, .rich_media_title')) || textOf(document.querySelector('h1')) || document.title || '';
+  const site = meta('meta[property="og:site_name"]') || (isWechat ? '微信公众平台' : location.hostname);
+  const author = meta('meta[name="author"]') || meta('meta[property="article:author"]') || textOf(document.querySelector('#js_name, .account_nickname_inner')) || meta('[rel="author"]', 'text') || '';
+  const date = meta('meta[property="article:published_time"]') || meta('meta[name="date"]') || textOf(document.querySelector('#publish_time, em#post-date')) || meta('time[datetime]', 'datetime') || meta('time', 'text') || '';
   const description = meta('meta[name="description"]') || meta('meta[property="og:description"]') || '';
   const pcount = paragraphCount(best);
   const ld = linkDensity(best, text);
@@ -441,9 +466,29 @@ def main() -> int:
                 allow_parallel_chrome=dedicated_mode,
                 create_profile_if_missing=dedicated_mode,
             )
+            wechat_mode = is_wechat_url(URL)
+            if wechat_mode:
+                # Keep the persistent Chrome/CDP profile, but borrow the WeChat-
+                # specific browser behavior from the old wechat-article-fetch
+                # skill: mobile viewport plus a few low-risk automation-signal
+                # shims before page scripts run.
+                context.add_init_script(WECHAT_STEALTH_JS)
             page = context.new_page()
+            if wechat_mode:
+                page.set_viewport_size({"width": 375, "height": 812})
             page.goto(URL, timeout=45000, wait_until="domcontentloaded")
-            time.sleep(2)
+            time.sleep(3 if wechat_mode else 2)
+            if wechat_mode:
+                try:
+                    if "appmsgcaptcha" in page.url or "环境异常" in page.content():
+                        print("[warn] WeChat verification page detected; waiting 20s for manual verification...")
+                        time.sleep(20)
+                except Exception:
+                    pass
+                try:
+                    page.wait_for_selector("#js_content", timeout=10000)
+                except Exception:
+                    print("[warn] Waiting for WeChat #js_content timed out; continuing with generic extraction...")
             for _ in range(8):
                 page.evaluate("window.scrollBy(0, Math.max(500, window.innerHeight * 0.75))")
                 time.sleep(0.35)

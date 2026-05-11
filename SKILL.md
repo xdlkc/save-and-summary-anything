@@ -156,6 +156,12 @@ PY
 - 脚本不要用 Playwright `launch_persistent_context()` 直接打开默认 profile；它在现代 Chrome 上可能因默认 profile 自动化限制而得到空 profile，表现为 Google 未登录、cookie 缺失。
 - 如果 Chrome 已经运行但没有 remote debugging，脚本会失败并提示用户先 Cmd+Q 退出 Chrome；否则新参数不会对已有 Chrome 进程生效，仍然拿不到正确登录态。
 - 抓取正文时优先选择 `article`、`main`、常见 article/content 容器；若找不到再用正文评分最高的节点。
+- 对微信公众号 `mp.weixin.qq.com`，保留本技能的 dedicated Chrome/CDP 持久 profile 打开方式，同时吸收 `wechat-article-fetch` 的专项浏览器行为：
+  - 页面使用手机 viewport `375×812`，更接近微信内置浏览器；
+  - 在页面脚本前注入低风险反自动化特征：隐藏 `navigator.webdriver`、提供 `navigator.plugins`、补 `window.chrome.runtime`；
+  - 优先等待并提取 `#js_content`，标题/作者/日期优先读 `#activity-name`、`.rich_media_title`、`#js_name`、`#publish_time` 等微信选择器；
+  - 遇到 `appmsgcaptcha` 或“环境异常”验证页时，等待 20 秒供用户手动完成验证；
+  - 微信图片扩展名优先读取 URL query 里的 `wx_fmt=jpg/png/gif/webp`。
 - 对知乎 `<img class="ztext-gif" src="..._b.jpg">` 这类动图封面，脚本会优先把 URL 改成 `..._b.gif` 下载真实 GIF，避免只保存静态 JPG 封面。
 - 保存时保留标题、站点、作者、日期、原文 URL；正文按 DOM 顺序输出标题、段落、列表、引用、代码块、链接和图片。
 - 图片下载使用页面 URL 作为 Referer；失败时保留原始远程图片链接。
